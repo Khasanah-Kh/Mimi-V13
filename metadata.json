@@ -1,0 +1,6 @@
+{
+  "name": "MIMI V13",
+  "description": "Premium SMP Learning App with cyber gamer aesthetic and MIMI AI tutor",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
