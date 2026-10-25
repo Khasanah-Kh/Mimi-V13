@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 100 &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 120)) &&
+             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500)) &&
+             (!('selectedEducationLevel' in data) || (data.selectedEducationLevel is string && data.selectedEducationLevel.size() <= 30)) &&
+             (!('selectedClass' in data) || (data.selectedClass is string && data.selectedClass.size() <= 30)) &&
+             (!('streakDays' in data) || (data.streakDays is int && data.streakDays >= 0)) &&
+             (!('totalXp' in data) || (data.totalXp is int && data.totalXp >= 0)) &&
+             (!('progressCurrent' in data) || (data.progressCurrent is int && data.progressCurrent >= 0)) &&
+             (!('progressTotal' in data) || (data.progressTotal is int && data.progressTotal >= 0)) &&
+             (!('completedLevels' in data) || (data.completedLevels is list && data.completedLevels.size() <= 200)) &&
+             (!('completedQuizzes' in data) || (data.completedQuizzes is int && data.completedQuizzes >= 0)) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) && isValidId(userId) &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['userId', 'displayName', 'createdAt']) &&
+                       request.resource.data.keys().hasOnly([
+                         'userId', 'displayName', 'email', 'photoUrl',
+                         'selectedEducationLevel', 'selectedClass',
+                         'streakDays', 'totalXp', 'progressCurrent', 'progressTotal',
+                         'completedLevels', 'completedQuizzes',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       request.resource.data.createdAt is timestamp &&
+                       isValidUserProfile(request.resource.data);
+
+      allow update: if isOwner(userId) && isValidId(userId) &&
+                       request.resource.data.userId == resource.data.userId &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       isValidUserProfile(request.resource.data) &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                         'displayName', 'email', 'photoUrl',
+                         'selectedEducationLevel', 'selectedClass',
+                         'streakDays', 'totalXp', 'progressCurrent', 'progressTotal',
+                         'completedLevels', 'completedQuizzes',
+                         'updatedAt'
+                       ]);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+    }
+  }
+}

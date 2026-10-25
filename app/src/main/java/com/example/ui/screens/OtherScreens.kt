@@ -21,8 +21,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -625,6 +629,7 @@ fun LencanaScreen(
 @Composable
 fun ProfilScreen(
   uiState: MimiUiState,
+  onSignOut: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   LazyColumn(
@@ -686,6 +691,45 @@ fun ProfilScreen(
             fontSize = 13.sp
           )
 
+          if (!uiState.userEmail.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+              text = uiState.userEmail,
+              color = Color.White.copy(alpha = 0.7f),
+              fontSize = 12.sp
+            )
+          }
+
+          Spacer(modifier = Modifier.height(12.dp))
+
+          // Firestore Cloud Sync Pill
+          Box(
+            modifier = Modifier
+              .clip(RoundedCornerShape(12.dp))
+              .background(Color(0xFF064E3B).copy(alpha = 0.6f))
+              .border(1.dp, NeonGreen.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
+              .padding(horizontal = 12.dp, vertical = 6.dp)
+          ) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.Center
+            ) {
+              Icon(
+                imageVector = Icons.Default.CloudDone,
+                contentDescription = "Cloud Synced",
+                tint = NeonGreen,
+                modifier = Modifier.size(16.dp)
+              )
+              Spacer(modifier = Modifier.width(6.dp))
+              Text(
+                text = "Tersinkronisasi ke Cloud Firestore",
+                color = NeonGreen,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 11.sp
+              )
+            }
+          }
+
           Spacer(modifier = Modifier.height(16.dp))
 
           // Stat boxes
@@ -732,6 +776,36 @@ fun ProfilScreen(
           color = TextPrimary,
           fontSize = 13.5.sp,
           fontWeight = FontWeight.Medium
+        )
+      }
+    }
+
+    // Sign Out Button
+    item {
+      Spacer(modifier = Modifier.height(8.dp))
+      Button(
+        onClick = onSignOut,
+        modifier = Modifier
+          .fillMaxWidth()
+          .height(48.dp)
+          .testTag("sign_out_button"),
+        colors = ButtonDefaults.buttonColors(
+          containerColor = Color(0xFF7F1D1D).copy(alpha = 0.5f),
+          contentColor = Color(0xFFFCA5A5)
+        ),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryRed.copy(alpha = 0.6f))
+      ) {
+        Icon(
+          imageVector = Icons.AutoMirrored.Filled.Logout,
+          contentDescription = "Keluar Akun",
+          modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+          text = "Keluar dari Akun Google",
+          fontWeight = FontWeight.Bold,
+          fontSize = 13.5.sp
         )
       }
     }

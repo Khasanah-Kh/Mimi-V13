@@ -11,6 +11,8 @@ import com.example.model.LevelItem
 import com.example.model.LevelStatus
 import com.example.model.MessageSender
 import com.example.model.QuizQuestion
+import com.example.data.UserProfile
+import com.example.data.UserRepository
 import com.google.firebase.Firebase
 import com.google.firebase.ai.ai
 import kotlinx.coroutines.TimeoutCancellationException
@@ -35,6 +37,8 @@ private const val TAG = "MimiViewModel"
  */
 data class MimiUiState(
   val userName: String = "Raka",
+  val userEmail: String? = null,
+  val isCloudSynced: Boolean = false,
   val userSubtitle: String = "SMP Kelas 8 • Level 12",
   val streakDays: Int = 7,
   val totalXp: Int = 1250,
@@ -70,9 +74,19 @@ data class MimiUiState(
   val badges: List<BadgeItem> = emptyList()
 )
 
-class MimiViewModel : ViewModel() {
+class MimiViewModel(
+  private val userRepository: UserRepository? = null,
+  private val currentUserId: String? = null,
+  initialName: String = "Raka",
+  initialEmail: String? = null
+) : ViewModel() {
 
-  private val _uiState = MutableStateFlow(MimiUiState())
+  private val _uiState = MutableStateFlow(
+    MimiUiState(
+      userName = initialName,
+      userEmail = initialEmail
+    )
+  )
   val uiState: StateFlow<MimiUiState> = _uiState.asStateFlow()
 
   init {
@@ -83,6 +97,8 @@ class MimiViewModel : ViewModel() {
 
     _uiState.update {
       it.copy(
+        userName = initialName,
+        userEmail = initialEmail,
         selectedEducationLevel = initialLevel,
         selectedClass = initialGrade,
         currentLevels = levels,
@@ -96,6 +112,64 @@ class MimiViewModel : ViewModel() {
     initChat(initialLevel, initialGrade, activeItem)
     initQuiz()
     initBadges()
+
+    // Real-time Cloud Persistence sync
+    if (userRepository != null && currentUserId != null) {
+      viewModelScope.launch {
+        try {
+          userRepository.observeProfile(currentUserId).collect { cloudProfile ->
+            if (cloudProfile != null) {
+              val cloudEducationLevel = try {
+                EducationLevel.valueOf(cloudProfile.selectedEducationLevel)
+              } catch (e: Exception) {
+                _uiState.value.selectedEducationLevel
+              }
+              val cloudGrade = cloudProfile.selectedClass.ifBlank { _uiState.value.selectedClass }
+              val updatedLevels = resolveLevelsFor(cloudEducationLevel, cloudGrade)
+              val activeItemUpdated = updatedLevels.firstOrNull { it.status == LevelStatus.ACTIVE } ?: updatedLevels.first()
+
+              _uiState.update { current ->
+                current.copy(
+                  userName = cloudProfile.displayName.ifBlank { current.userName },
+                  userEmail = cloudProfile.email ?: current.userEmail,
+                  totalXp = cloudProfile.totalXp.toInt(),
+                  streakDays = cloudProfile.streakDays.toInt(),
+                  progressCurrent = cloudProfile.progressCurrent.toInt(),
+                  progressTotal = cloudProfile.progressTotal.toInt(),
+                  selectedEducationLevel = cloudEducationLevel,
+                  selectedClass = cloudGrade,
+                  currentLevels = updatedLevels,
+                  activeLevelItem = activeItemUpdated,
+                  activeLevelTitle = activeItemUpdated.title,
+                  userSubtitle = "${cloudEducationLevel.label} $cloudGrade • Level 12",
+                  activeCurriculumBadge = getCurriculumBadge(cloudEducationLevel, cloudGrade),
+                  isCloudSynced = true
+                )
+              }
+            } else {
+              // Create initial profile in Firestore
+              val newProfile = UserProfile(
+                userId = currentUserId,
+                displayName = initialName,
+                email = initialEmail,
+                selectedEducationLevel = _uiState.value.selectedEducationLevel.name,
+                selectedClass = _uiState.value.selectedClass,
+                streakDays = _uiState.value.streakDays.toLong(),
+                totalXp = _uiState.value.totalXp.toLong(),
+                progressCurrent = _uiState.value.progressCurrent.toLong(),
+                progressTotal = _uiState.value.progressTotal.toLong(),
+                completedLevels = emptyList(),
+                completedQuizzes = 0L
+              )
+              userRepository.saveOrSyncProfile(newProfile)
+              _uiState.update { it.copy(isCloudSynced = true) }
+            }
+          }
+        } catch (e: Exception) {
+          Log.e(TAG, "Failed syncing user profile with Firestore", e)
+        }
+      }
+    }
   }
 
   /**
@@ -130,6 +204,16 @@ class MimiViewModel : ViewModel() {
     }
 
     sendMimiGreeting(level, validatedGrade, activeItem)
+
+    if (userRepository != null) {
+      viewModelScope.launch {
+        try {
+          userRepository.updateEducationSelection(level.name, validatedGrade)
+        } catch (e: Exception) {
+          Log.w(TAG, "Failed to persist education selection to cloud", e)
+        }
+      }
+    }
   }
 
   /**
@@ -156,6 +240,16 @@ class MimiViewModel : ViewModel() {
         userSubtitle = "${level.label} $grade • Level 12",
         activeCurriculumBadge = getCurriculumBadge(level, grade)
       )
+    }
+
+    if (userRepository != null) {
+      viewModelScope.launch {
+        try {
+          userRepository.updateEducationSelection(level.name, grade)
+        } catch (e: Exception) {
+          Log.w(TAG, "Failed to persist grade selection to cloud", e)
+        }
+      }
     }
   }
 
