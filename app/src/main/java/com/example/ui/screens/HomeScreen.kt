@@ -46,10 +46,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -69,9 +73,12 @@ import com.example.ui.components.CyberGradientButton
 import com.example.ui.components.CyberProgressBar
 import com.example.ui.components.GlowCard
 import com.example.ui.components.MimiFoxMascot
+import com.example.ui.components.ShareAndDownloadBannerCard
+import com.example.ui.components.ShareAndDownloadHubDialog
 import com.example.ui.theme.CardBg
 import com.example.ui.theme.CyberGradient
 import com.example.ui.theme.DarkNavyBg
+import com.example.ui.theme.ElectricCyan
 import com.example.ui.theme.NeonGreen
 import com.example.ui.theme.PrimaryBlue
 import com.example.ui.theme.PrimaryRed
@@ -88,6 +95,15 @@ fun HomeScreen(
   onLevelClick: (LevelItem) -> Unit,
   modifier: Modifier = Modifier
 ) {
+  var isShareHubOpen by remember { mutableStateOf(false) }
+
+  if (isShareHubOpen) {
+    ShareAndDownloadHubDialog(
+      uiState = uiState,
+      onDismiss = { isShareHubOpen = false }
+    )
+  }
+
   LazyColumn(
     modifier = modifier
       .fillMaxSize()
@@ -95,13 +111,14 @@ fun HomeScreen(
       .padding(horizontal = 16.dp),
     verticalArrangement = Arrangement.spacedBy(16.dp)
   ) {
-    // Top Greeting Section (no clicks needed)
+    // Top Greeting Section with Share & Download Quick Trigger
     item {
       Spacer(modifier = Modifier.height(8.dp))
       TopGreetingSection(
         userName = uiState.userName,
         userSubtitle = uiState.userSubtitle,
-        selectedLevel = uiState.selectedEducationLevel
+        selectedLevel = uiState.selectedEducationLevel,
+        onOpenShareHub = { isShareHubOpen = true }
       )
     }
 
@@ -124,6 +141,14 @@ fun HomeScreen(
         progressCurrent = uiState.progressCurrent,
         progressTotal = uiState.progressTotal,
         isCurhat = uiState.selectedEducationLevel == EducationLevel.CURHAT
+      )
+    }
+
+    // Share App & Download Offline Study Pack Banner
+    item {
+      ShareAndDownloadBannerCard(
+        uiState = uiState,
+        onOpenHubClick = { isShareHubOpen = true }
       )
     }
 
@@ -220,7 +245,8 @@ fun HomeScreen(
 private fun TopGreetingSection(
   userName: String,
   userSubtitle: String,
-  selectedLevel: EducationLevel
+  selectedLevel: EducationLevel,
+  onOpenShareHub: () -> Unit
 ) {
   Row(
     modifier = Modifier
@@ -229,7 +255,7 @@ private fun TopGreetingSection(
     horizontalArrangement = Arrangement.SpaceBetween,
     verticalAlignment = Alignment.CenterVertically
   ) {
-    Column {
+    Column(modifier = Modifier.weight(1f)) {
       Text(
         text = "Halo, $userName! 🔥",
         color = TextPrimary,
@@ -261,20 +287,44 @@ private fun TopGreetingSection(
       }
     }
 
-    // Cyber Avatar / MIMI Mini Head
-    Box(
-      modifier = Modifier
-        .size(46.dp)
-        .clip(CircleShape)
-        .background(CardBg)
-        .border(
-          1.5.dp,
-          if (selectedLevel == EducationLevel.CURHAT) Brush.horizontalGradient(listOf(Color(0xFFEC4899), PrimaryRed)) else CyberGradient,
-          CircleShape
-        ),
-      contentAlignment = Alignment.Center
+    Row(
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-      MimiFoxMascot(size = 36.dp, showPulse = false)
+      // Quick Share & Download Top Button
+      Box(
+        modifier = Modifier
+          .size(44.dp)
+          .clip(CircleShape)
+          .background(CardBg)
+          .border(1.4.dp, ElectricCyan, CircleShape)
+          .clickable { onOpenShareHub() }
+          .testTag("top_share_download_button"),
+        contentAlignment = Alignment.Center
+      ) {
+        Icon(
+          imageVector = Icons.Default.Share,
+          contentDescription = "Bagikan & Unduh Aplikasi",
+          tint = ElectricCyan,
+          modifier = Modifier.size(20.dp)
+        )
+      }
+
+      // Cyber Avatar / MIMI Mini Head
+      Box(
+        modifier = Modifier
+          .size(46.dp)
+          .clip(CircleShape)
+          .background(CardBg)
+          .border(
+            1.5.dp,
+            if (selectedLevel == EducationLevel.CURHAT) Brush.horizontalGradient(listOf(Color(0xFFEC4899), PrimaryRed)) else CyberGradient,
+            CircleShape
+          ),
+        contentAlignment = Alignment.Center
+      ) {
+        MimiFoxMascot(size = 36.dp, showPulse = false)
+      }
     }
   }
 }

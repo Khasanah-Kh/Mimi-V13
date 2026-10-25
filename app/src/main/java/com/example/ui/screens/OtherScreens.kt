@@ -30,7 +30,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -46,6 +49,8 @@ import com.example.ui.components.CyberGradientButton
 import com.example.ui.components.CyberProgressBar
 import com.example.ui.components.GlowCard
 import com.example.ui.components.MimiFoxMascot
+import com.example.ui.components.ShareAndDownloadBannerCard
+import com.example.ui.components.ShareAndDownloadHubDialog
 import com.example.ui.theme.CardBg
 import com.example.ui.theme.CyberGradient
 import com.example.ui.theme.DarkNavyBg
@@ -632,6 +637,15 @@ fun ProfilScreen(
   onSignOut: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
+  var isShareHubOpen by remember { mutableStateOf(false) }
+
+  if (isShareHubOpen) {
+    ShareAndDownloadHubDialog(
+      uiState = uiState,
+      onDismiss = { isShareHubOpen = false }
+    )
+  }
+
   LazyColumn(
     modifier = modifier
       .fillMaxSize()
@@ -743,6 +757,14 @@ fun ProfilScreen(
           }
         }
       }
+    }
+
+    // Share App & Download Center Card
+    item {
+      ShareAndDownloadBannerCard(
+        uiState = uiState,
+        onOpenHubClick = { isShareHubOpen = true }
+      )
     }
 
     // Settings & Target
